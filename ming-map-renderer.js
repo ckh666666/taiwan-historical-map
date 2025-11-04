@@ -13,6 +13,11 @@ const mingColorScheme = {
 // 加载并渲染明郑地图（TopoJSON格式）
 function loadMingMap() {
     const svg = d3.select('#historical-map');
+    // 获取或创建地图组
+    let mapGroup = d3.select('#map-group');
+    if (mapGroup.empty()) {
+        mapGroup = svg.append('g').attr('id', 'map-group');
+    }
     
     // 显示加载指示器
     d3.select('#loading-indicator').style('display', 'flex');
@@ -20,8 +25,8 @@ function loadMingMap() {
     console.log('🗺️ 开始加载明郑时期地图数据（TopoJSON格式）...');
     
     // 清空旧地图
-    svg.selectAll('path.ming-region').remove();
-    svg.selectAll('path.ming-base').remove();
+    mapGroup.selectAll('path.ming-region').remove();
+    mapGroup.selectAll('path.ming-base').remove();
     
     // 同时加载三个TopoJSON文件：台湾底图 + 明郑两个区域
     Promise.all([
@@ -49,15 +54,15 @@ function loadMingMap() {
         
         // 第一层：渲染台湾完整轮廓（灰色底图，表示未控制区域）
         console.log('  - 开始渲染台湾底图（未控制区域）...');
-        renderMingBase(svg, countiesFeatures);
+        renderMingBase(mapGroup, countiesFeatures);
         
         // 第二层：渲染设里疆界区域（粉色，大块区域）
         console.log('  - 开始渲染设里疆界区域...');
-        renderMingRegions(svg, borderFeatures, 'border', '设里疆界');
+        renderMingRegions(mapGroup, borderFeatures, 'border', '设里疆界');
         
         // 第三层：渲染屯垦地区域（绿色，小点状区域，最上层）
         console.log('  - 开始渲染屯垦地区域...');
-        renderMingRegions(svg, tunkenFeatures, 'tunken', '屯垦地');
+        renderMingRegions(mapGroup, tunkenFeatures, 'tunken', '屯垦地');
         
         // 隐藏加载指示器
         setTimeout(() => {
@@ -75,8 +80,8 @@ function loadMingMap() {
 }
 
 // 渲染台湾底图（灰色，表示未控制区域）
-function renderMingBase(svg, features) {
-    svg.selectAll('path.ming-base')
+function renderMingBase(mapGroup, features) {
+    mapGroup.selectAll('path.ming-base')
         .data(features)
         .enter()
         .append('path')
@@ -97,8 +102,16 @@ function renderMingBase(svg, features) {
                 .attr('fill-opacity', 0.9)
                 .attr('stroke-width', 1.5);
             
+            // 获取现代县市名称（与荷兰时期显示格式一致）
+            const countyId = d.properties.id;
+            const countyName = d.properties.name;
+            const modernName = (typeof countyCodes !== 'undefined' && countyCodes[countyId]) ? countyCodes[countyId] : countyName;
+            
             const tooltipText = `
-                <div style=\"text-align: left;\">未控制区域</div>
+                <div style="text-align: left;">
+                    <strong style="font-size: 16px;">未控制区域</strong><br/>
+                    <span style="color: #ccc;">（今${modernName}）</span>
+                </div>
             `;
             showTooltip(event, tooltipText);
         })
@@ -114,10 +127,10 @@ function renderMingBase(svg, features) {
 }
 
 // 渲染明郑地图区域
-function renderMingRegions(svg, features, type, typeName) {
+function renderMingRegions(mapGroup, features, type, typeName) {
     const color = mingColorScheme[type];
     
-    svg.selectAll(`path.ming-region.${type}`)
+    mapGroup.selectAll(`path.ming-region.${type}`)
         .data(features)
         .enter()
         .append('path')
@@ -210,13 +223,5 @@ function updateMingLegend() {
         .attr('class', 'legend-label')
         .text(d => d.name);
     
-    // 添加说明文字
-    legendItems.append('div')
-        .style('margin-top', '10px')
-        .style('padding-top', '10px')
-        .style('border-top', '1px solid #e0e0e0')
-        .style('font-size', '12px')
-        .style('color', '#666')
-        .html('<strong>明郑时期（1662-1683）</strong><br/>粉色：设里疆界（大块）｜绿色：屯垦地（小点状）<br/><em style="font-size: 11px;">黑色细线边界，与荷治风格一致</em>');
 }
 
