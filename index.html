@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台湾历史统治时期地图</title>
+    <link rel="stylesheet" href="historical-map-styles.css">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/topojson@3"></script>
+</head>
+<body>
+    <!-- 页面标题栏 -->
+    <header class="header">
+        <div class="container">
+            <h1 class="title">🗺️ 台湾历史统治时期地图</h1>
+            <div class="subtitle">探索台湾从古至今的历史版图变迁</div>
+        </div>
+    </header>
+
+    <!-- 主要内容区域 -->
+    <main class="main-content">
+        <div class="container">
+            <div class="content-layout">
+                <!-- 左侧时间选择栏 -->
+                <aside class="time-selector-panel">
+                    <h2>历史时期</h2>
+                    <div class="period-list">
+                        <button class="period-btn" data-period="dutch_spanish">
+                            <span class="period-number">01</span>
+                            <div class="period-info">
+                                <div class="period-name">荷兰西班牙统治时期</div>
+                                <div class="period-years">1624-1642</div>
+                            </div>
+                        </button>
+                        <button class="period-btn" data-period="ming">
+                            <span class="period-number">02</span>
+                            <div class="period-info">
+                                <div class="period-name">明郑时期</div>
+                                <div class="period-years">1662-1683</div>
+                            </div>
+                        </button>
+                        <button class="period-btn active" data-period="qing">
+                            <span class="period-number">03</span>
+                            <div class="period-info">
+                                <div class="period-name">清治时期</div>
+                                <div class="period-years">1683-1895</div>
+                            </div>
+                        </button>
+                        <button class="period-btn" data-period="japanese">
+                            <span class="period-number">04</span>
+                            <div class="period-info">
+                                <div class="period-name">日据时期</div>
+                                <div class="period-years">1895-1945</div>
+                            </div>
+                        </button>
+                        <button class="period-btn" data-period="modern">
+                            <span class="period-number">05</span>
+                            <div class="period-info">
+                                <div class="period-name">现代时期</div>
+                                <div class="period-years">1945-至今</div>
+                            </div>
+                        </button>
+                    </div>
+                </aside>
+
+                <!-- 右侧地图区域 -->
+                <div class="map-content">
+                    <!-- 地图容器 -->
+                    <div class="map-container">
+                        <div class="map-controls">
+                            <div class="map-zoom-controls">
+                                <button id="zoom-in" title="放大">+</button>
+                                <button id="zoom-out" title="缩小">-</button>
+                                <button id="reset-zoom" title="重置">↻</button>
+                            </div>
+                            <div class="current-period-indicator">
+                                <span id="current-period-name">清治时期</span>
+                                <span id="current-period-years">1683-1895</span>
+                                <button class="view-detailed-btn" id="view-detailed-map" title="查看详细地图">详细地图</button>
+                            </div>
+                        </div>
+                        
+                        <div class="loading-indicator" id="loading-indicator">
+                            <div class="spinner"></div>
+                            <span>正在加载地图数据...</span>
+                        </div>
+                        
+                        <svg id="historical-map"></svg>
+                        
+                        <!-- 地图图例 -->
+                        <div class="map-legend">
+                            <h4>行政区划</h4>
+                            <div class="legend-items">
+                                <div class="legend-item">
+                                    <span class="legend-color" style="background: #2196F3;"></span>
+                                    <span class="legend-label">台北府</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-color" style="background: #4CAF50;"></span>
+                                    <span class="legend-label">台湾府</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-color" style="background: #FF9800;"></span>
+                                    <span class="legend-label">台南府</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-color" style="background: #9C27B0;"></span>
+                                    <span class="legend-label">台东直隶州</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-color" style="background: #BDBDBD;"></span>
+                                    <span class="legend-label">未命名区域</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 历史介绍区域 -->
+                    <div class="history-info-panel">
+                        <div class="info-header">
+                            <h3 id="info-title">清治时期</h3>
+                            <div class="info-years" id="info-years">1683-1895</div>
+                        </div>
+                        <div class="info-content" id="info-content">
+                            <p><strong>背景：</strong>1683年，清朝施琅攻台，郑氏政权投降，台湾正式纳入清朝版图。</p>
+                            <p><strong>1894年（光绪20年）行政区划：</strong></p>
+                            <ul>
+                                <li><strong>台北府</strong>：宜兰县、基隆厅、淡水县、新竹县（4个县厅）</li>
+                                <li><strong>台湾府（设于台中）</strong>：台湾县、彰化县、埔里社厅、苗栗县、云林县（5个县厅）</li>
+                                <li><strong>台南府</strong>：嘉义县、安平县、凤山县、恒春县、澎湖厅（5个县厅）</li>
+                                <li><strong>台东直隶州</strong>：直隶于台湾省（1个直隶州）</li>
+                            </ul>
+                            <p><strong>主要特征：</strong></p>
+                            <ul>
+                                <li>1885年升格为台湾省，刘铭传任首任巡抚</li>
+                                <li>三府一直隶州，共十一县三厅</li>
+                                <li>行政中心：台北（台北府）</li>
+                                <li>逐步拓垦全岛，开山抚番政策</li>
+                            </ul>
+                            <p><strong>影响：</strong>212年的清朝统治奠定了台湾的政治、经济、文化基础。1895年甲午战争后割让日本。</p>
+                        </div>
+                        <div class="info-footer">
+                            <button class="toggle-info-btn" id="toggle-info-btn">
+                                <span>收起</span>
+                                <span style="display: none;">展开</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 史料展示区域 -->
+                    <div class="historical-text-panel" id="historical-text-panel">
+                        <div class="historical-text-header">
+                            <h3>📚 史料摘录</h3>
+                            <div class="historical-text-source">《台灣歷史圖說 史前至一九四五年》</div>
+                        </div>
+                        <div class="historical-text-content" id="historical-text-content">
+                            <!-- 史料内容将动态加载 -->
+                        </div>
+                        <div class="historical-text-footer">
+                            <button class="toggle-historical-text-btn" id="toggle-historical-text-btn">
+                                <span>收起史料</span>
+                                <span style="display: none;">展开史料</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 工具提示 -->
+    <div class="tooltip" id="tooltip"></div>
+
+    <!-- 详细地图模态框 -->
+    <div class="detailed-map-modal" id="detailed-map-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="detailed-map-title">详细地图</h3>
+                <button class="close-modal" id="close-detailed-map">&times;</button>
+            </div>
+            <div class="modal-body">
+                <img id="detailed-map-image" src="" alt="详细地图">
+                <div class="map-credits" id="map-credits"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页面底部 -->
+    <footer class="footer">
+        <div class="container">
+            <p>数据来源：历史文献及学术研究 | 仅供学术研究使用</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript文件 -->
+    <script src="historical-map-data.js"></script>
+    <script src="qing-map-with-names.js"></script>
+    <script src="qing-map-renderer.js"></script>
+    <script src="ming-map-renderer.js"></script>
+    <script src="japanese-map-with-names.js"></script>
+    <script src="japanese-map-renderer.js"></script>
+    <script src="modern-map-config.js"></script>
+    <script src="historical-map.js"></script>
+</body>
+</html>
+
