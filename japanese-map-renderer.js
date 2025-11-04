@@ -7,6 +7,11 @@ let japaneseMapSvg = null;
 // 加载并渲染日据时期地图（TopoJSON格式）
 function loadJapaneseMap() {
     const svg = d3.select('#historical-map');
+    // 获取或创建地图组
+    let mapGroup = d3.select('#map-group');
+    if (mapGroup.empty()) {
+        mapGroup = svg.append('g').attr('id', 'map-group');
+    }
     
     // 显示加载指示器
     d3.select('#loading-indicator').style('display', 'flex');
@@ -14,7 +19,7 @@ function loadJapaneseMap() {
     console.log('🗺️ 开始加载日据时期地图数据（TopoJSON格式）...');
     
     // 清空旧地图
-    svg.selectAll('path.japanese-region').remove();
+    mapGroup.selectAll('path.japanese-region').remove();
     
     // 加载日据时期地图TopoJSON
     d3.json("1926d_1 (1).json")
@@ -49,7 +54,7 @@ function loadJapaneseMap() {
             console.log('  - 开始渲染', features.length, '个区域...');
             
             // 渲染日据时期地图 - 填色模式
-            const paths = svg.selectAll('path.japanese-region')
+            const paths = mapGroup.selectAll('path.japanese-region')
                 .data(features)
                 .enter()
                 .append('path')
@@ -207,14 +212,6 @@ function updateJapaneseLegend() {
         .attr('class', 'legend-label')
         .html(d => `${d.name}<br/><small style="color: #999;">${d.romaji}</small>`);
     
-    // 添加说明文字
-    legendItems.append('div')
-        .style('margin-top', '10px')
-        .style('padding-top', '10px')
-        .style('border-top', '1px solid #e0e0e0')
-        .style('font-size', '12px')
-        .style('color', '#666')
-        .html('<strong>日据时期（1926年）</strong><br/>五州三厅制度<br/><em style="font-size: 11px;">黑色细线边界</em>');
 }
 
 
