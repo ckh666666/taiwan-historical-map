@@ -210,6 +210,14 @@ body {
     height: auto;  /* 允许JavaScript动态设置高度 */
     background: #f0f0f0;  /* 使用浅灰色背景，让各府颜色更清晰 */
     border-radius: 8px;
+    touch-action: none; /* 禁用默认触摸行为，允许自定义手势 */
+    -webkit-user-select: none;
+    user-select: none;
+    cursor: grab;
+}
+
+#historical-map:active {
+    cursor: grabbing;
 }
 
 /* 清代地图区域样式（荷治风格：黑色细线） */
@@ -732,11 +740,45 @@ path.county:hover {
     text-indent: 0;
 }
 
+/* 确保标题和列表样式正确 */
+.historical-text-content h4 {
+    margin-top: 25px;
+    margin-bottom: 15px;
+    color: #2c3e50;
+    font-size: 18px;
+    font-weight: bold;
+    border-bottom: 2px solid #9896f1;
+    padding-bottom: 8px;
+}
+
+.historical-text-content h4:first-child {
+    margin-top: 0;
+}
+
+.historical-text-content ul {
+    margin: 15px 0;
+    padding-left: 30px;
+}
+
+.historical-text-content li {
+    margin-bottom: 12px;
+    line-height: 1.8;
+}
+
+.historical-text-content strong {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
 .historical-text-footer {
     margin-top: 20px;
     padding-top: 15px;
     border-top: 2px solid #ecf0f1;
     text-align: center;
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
 }
 
 .toggle-historical-text-btn {
@@ -756,6 +798,24 @@ path.county:hover {
     box-shadow: 0 4px 8px rgba(152, 150, 241, 0.3);
 }
 
+.view-original-text-btn {
+    background: linear-gradient(135deg, #9896f1 0%, #d59bf6 100%);
+    border: none;
+    color: #ffffff;
+    padding: 8px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 6px rgba(152, 150, 241, 0.3);
+}
+
+.view-original-text-btn:hover {
+    background: linear-gradient(135deg, #d59bf6 0%, #9896f1 100%);
+    box-shadow: 0 4px 12px rgba(152, 150, 241, 0.5);
+    transform: translateY(-2px);
+}
+
 /* 史料面板初始隐藏 */
 .historical-text-panel.hidden {
     display: none;
@@ -768,5 +828,204 @@ path.county:hover {
 
 #historical-text-panel:not(.hidden) {
     display: block;
+}
+
+/* 原文精选模态框 */
+.original-text-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 10000;
+    overflow-y: auto;
+    backdrop-filter: blur(5px);
+}
+
+.original-text-modal.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.original-text-modal .modal-content {
+    background: #ffffff;
+    border-radius: 12px;
+    max-width: 900px;
+    width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.original-text-modal .modal-body {
+    padding: 25px;
+    overflow-y: auto;
+    text-align: left;
+}
+
+.original-text-source {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #ecf0f1;
+}
+
+.original-text-content {
+    line-height: 2;
+    color: #555;
+    font-size: 15px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.original-text-content p {
+    margin-bottom: 20px;
+    text-align: justify;
+    text-indent: 2em;
+}
+
+.original-text-content p:first-child {
+    text-indent: 0;
+}
+
+/* 原文精选模态框中的标题和列表样式 */
+.original-text-content h4 {
+    margin-top: 25px;
+    margin-bottom: 15px;
+    color: #2c3e50;
+    font-size: 18px;
+    font-weight: bold;
+    border-bottom: 2px solid #9896f1;
+    padding-bottom: 8px;
+}
+
+.original-text-content h4:first-child {
+    margin-top: 0;
+}
+
+.original-text-content ul {
+    margin: 15px 0;
+    padding-left: 30px;
+}
+
+.original-text-content li {
+    margin-bottom: 12px;
+    line-height: 1.8;
+}
+
+.original-text-content strong {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .content-layout {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .time-selector-panel {
+        position: relative;
+        top: 0;
+        margin-bottom: 15px;
+    }
+    
+    .period-list {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .period-btn {
+        flex: 1;
+        min-width: 120px;
+        padding: 12px;
+    }
+    
+    .map-container {
+        width: 100%;
+        overflow: hidden;
+    }
+    
+    #historical-map {
+        width: 100%;
+        height: 400px;
+        touch-action: none; /* 禁用默认触摸行为，允许自定义手势 */
+        -webkit-user-select: none;
+        user-select: none;
+    }
+    
+    .map-zoom-controls {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 1000;
+    }
+    
+    .map-zoom-controls button {
+        width: 40px;
+        height: 40px;
+        font-size: 18px;
+    }
+    
+    .current-period-indicator {
+        font-size: 12px;
+        padding: 8px 12px;
+    }
+    
+    .original-text-modal .modal-content {
+        max-width: 95%;
+        max-height: 95vh;
+    }
+    
+    .original-text-modal .modal-body {
+        padding: 15px;
+    }
+    
+    .historical-text-footer {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .toggle-historical-text-btn,
+    .view-original-text-btn {
+        width: 100%;
+    }
+}
+
+/* 触摸设备优化 */
+@media (pointer: coarse) {
+    #historical-map {
+        touch-action: none;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+    }
+    
+    path.county,
+    path.qing-region,
+    path.qing-base,
+    path.ming-region,
+    path.ming-base,
+    path.japanese-region {
+        -webkit-tap-highlight-color: transparent;
+    }
 }
 
