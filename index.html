@@ -25,7 +25,7 @@
                 <aside class="time-selector-panel">
                     <h2>历史时期</h2>
                     <div class="period-list">
-                        <button class="period-btn" data-period="dutch_spanish">
+                        <button class="period-btn active" data-period="dutch_spanish">
                             <span class="period-number">01</span>
                             <div class="period-info">
                                 <div class="period-name">荷兰西班牙统治时期</div>
@@ -39,7 +39,7 @@
                                 <div class="period-years">1662-1683</div>
                             </div>
                         </button>
-                        <button class="period-btn active" data-period="qing">
+                        <button class="period-btn" data-period="qing">
                             <span class="period-number">03</span>
                             <div class="period-info">
                                 <div class="period-name">清治时期</div>
@@ -69,13 +69,11 @@
                     <div class="map-container">
                         <div class="map-controls">
                             <div class="map-zoom-controls">
-                                <button id="zoom-in" title="放大">+</button>
-                                <button id="zoom-out" title="缩小">-</button>
-                                <button id="reset-zoom" title="重置">↻</button>
+                                <button id="reset-zoom" title="重置视角">↻</button>
                             </div>
                             <div class="current-period-indicator">
-                                <span id="current-period-name">清治时期</span>
-                                <span id="current-period-years">1683-1895</span>
+                                <span id="current-period-name">荷兰西班牙统治时期</span>
+                                <span id="current-period-years">1624-1642</span>
                                 <button class="view-detailed-btn" id="view-detailed-map" title="查看详细地图">详细地图</button>
                             </div>
                         </div>
@@ -118,26 +116,17 @@
                     <!-- 历史介绍区域 -->
                     <div class="history-info-panel">
                         <div class="info-header">
-                            <h3 id="info-title">清治时期</h3>
-                            <div class="info-years" id="info-years">1683-1895</div>
+                            <h3 id="info-title">荷兰西班牙治理时期</h3>
+                            <div class="info-years" id="info-years">1624-1642</div>
                         </div>
                         <div class="info-content" id="info-content">
-                            <p><strong>背景：</strong>1683年，清朝施琅攻台，郑氏政权投降，台湾正式纳入清朝版图。</p>
-                            <p><strong>1894年（光绪20年）行政区划：</strong></p>
-                            <ul>
-                                <li><strong>台北府</strong>：宜兰县、基隆厅、淡水县、新竹县（4个县厅）</li>
-                                <li><strong>台湾府（设于台中）</strong>：台湾县、彰化县、埔里社厅、苗栗县、云林县（5个县厅）</li>
-                                <li><strong>台南府</strong>：嘉义县、安平县、凤山县、恒春县、澎湖厅（5个县厅）</li>
-                                <li><strong>台东直隶州</strong>：直隶于台湾省（1个直隶州）</li>
-                            </ul>
+                            <p><strong>背景：</strong>1624年荷兰据台南建立政权；1626年西班牙在北部沿海设据点，形成南荷北西的格局，至1642年西班牙被逐。</p>
                             <p><strong>主要特征：</strong></p>
                             <ul>
-                                <li>1885年升格为台湾省，刘铭传任首任巡抚</li>
-                                <li>三府一直隶州，共十一县三厅</li>
-                                <li>行政中心：台北（台北府）</li>
-                                <li>逐步拓垦全岛，开山抚番政策</li>
+                                <li>荷兰以热兰遮城（今台南安平）为中心，控制南部与西部部分地区</li>
+                                <li>西班牙以圣萨尔瓦多城（今基隆）为中心，控制北海岸与东北部部分地区</li>
+                                <li>推动贸易、传教与据点建设</li>
                             </ul>
-                            <p><strong>影响：</strong>212年的清朝统治奠定了台湾的政治、经济、文化基础。1895年甲午战争后割让日本。</p>
                         </div>
                         <div class="info-footer">
                             <button class="toggle-info-btn" id="toggle-info-btn">
@@ -161,6 +150,9 @@
                                 <span>收起史料</span>
                                 <span style="display: none;">展开史料</span>
                             </button>
+                            <button class="view-original-text-btn" id="view-original-text-btn" style="display: none;">
+                                <span>📖 查看原文精选</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -181,6 +173,22 @@
             <div class="modal-body">
                 <img id="detailed-map-image" src="" alt="详细地图">
                 <div class="map-credits" id="map-credits"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 原文精选模态框 -->
+    <div class="original-text-modal" id="original-text-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="original-text-title">原文精选</h3>
+                <button class="close-modal" id="close-original-text">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="original-text-source" id="original-text-source"></div>
+                <div class="original-text-content" id="original-text-content">
+                    <!-- 完整原文内容将动态加载 -->
+                </div>
             </div>
         </div>
     </div>
