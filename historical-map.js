@@ -1,10 +1,14 @@
 // 历史地图主程序
 let mapWidth = 0;
 let mapHeight = 0;
-let currentPeriod = 'qing';  // 默认显示清治时期
+let currentPeriod = 'dutch_spanish';  // 默认显示荷兰西班牙时期
 let mapData = null;
 let projection = null;
 let path = null;
+let zoom = null;
+let initialTransform = null;
+let svg = null;
+let g = null;  // 地图组，用于应用变换
 
 // 清治时期颜色方案
 const qingColorScheme = {
@@ -152,16 +156,19 @@ function getControlStatus(countyId, period) {
 
 // 初始化地图
 function initMap() {
-    const container = d3.select('#historical-map');
-    const containerNode = container.node();
+    svg = d3.select('#historical-map');
+    const containerNode = svg.node();
     
     mapWidth = containerNode.getBoundingClientRect().width - 40;
     mapHeight = 600;  // 增加高度以更好地显示台湾地图
     
     // 设置SVG尺寸
-    container
+    svg
         .attr('width', mapWidth)
         .attr('height', mapHeight);
+    
+    // 创建地图组（用于应用变换）
+    g = svg.append('g').attr('id', 'map-group');
     
     // 创建投影 - 使用台湾的实际中心点
     // 台湾完整坐标范围：经度 119.3~122.0, 纬度 21.9~25.3
@@ -171,6 +178,12 @@ function initMap() {
         .translate([mapWidth / 2, mapHeight / 2]);
     
     path = d3.geoPath().projection(projection);
+    
+    // 初始化缩放行为
+    setupZoomAndPan();
+    
+    // 保存初始变换
+    initialTransform = d3.zoomIdentity;
     
     // 如果初始时期是清治时期，直接加载清代地图
     if (currentPeriod === 'qing') {
@@ -202,15 +215,193 @@ function initMap() {
     }
 }
 
+// 设置缩放和平移功能
+function setupZoomAndPan() {
+    if (!svg || !g) return;
+    
+    // 创建缩放行为
+    zoom = d3.zoom()
+        .scaleExtent([0.5, 10])  // 缩放范围：0.5倍到10倍
+        .on('zoom', function(event) {
+            // 应用变换到地图组
+            g.attr('transform', event.transform);
+        });
+    
+    // 将缩放行为应用到SVG
+    svg.call(zoom);
+    
+    // 滚轮缩放（禁用右键上下文菜单）
+    svg.on('contextmenu', function(event) {
+        event.preventDefault();
+    });
+    
+    // 右键拖拽平移
+    let rightMouseDown = false;
+    let lastRightMousePos = null;
+    
+    svg.on('mousedown', function(event) {
+        if (event.button === 2) {  // 右键
+            rightMouseDown = true;
+            lastRightMousePos = [event.clientX, event.clientY];
+            event.preventDefault();
+            svg.style('cursor', 'grabbing');
+        }
+    });
+    
+    svg.on('mousemove', function(event) {
+        if (rightMouseDown && lastRightMousePos) {
+            const dx = event.clientX - lastRightMousePos[0];
+            const dy = event.clientY - lastRightMousePos[1];
+            
+            // 获取当前变换
+            const currentTransform = d3.zoomTransform(svg.node());
+            const newTransform = currentTransform.translate(dx, dy);
+            
+            // 应用新变换
+            svg.call(zoom.transform, newTransform);
+            
+            lastRightMousePos = [event.clientX, event.clientY];
+        }
+    });
+    
+    svg.on('mouseup', function(event) {
+        if (event.button === 2) {
+            rightMouseDown = false;
+            lastRightMousePos = null;
+            svg.style('cursor', 'default');
+        }
+    });
+    
+    svg.on('mouseleave', function() {
+        rightMouseDown = false;
+        lastRightMousePos = null;
+        svg.style('cursor', 'default');
+    });
+    
+    // 触摸设备支持（双指缩放、单指平移）
+    let touchStartDistance = null;
+    let touchStartTransform = null;
+    let touchStartCenter = null;
+    let singleTouchStart = null;
+    let isSingleTouch = false;
+    
+    svg.on('touchstart', function(event) {
+        event.preventDefault();
+        const touches = event.touches;
+        
+        if (touches.length === 2) {
+            // 双指缩放
+            isSingleTouch = false;
+            const touch1 = touches[0];
+            const touch2 = touches[1];
+            touchStartDistance = Math.sqrt(
+                Math.pow(touch2.clientX - touch1.clientX, 2) +
+                Math.pow(touch2.clientY - touch1.clientY, 2)
+            );
+            touchStartTransform = d3.zoomTransform(svg.node());
+            touchStartCenter = [
+                (touch1.clientX + touch2.clientX) / 2,
+                (touch1.clientY + touch2.clientY) / 2
+            ];
+        } else if (touches.length === 1) {
+            // 单指平移
+            isSingleTouch = true;
+            singleTouchStart = {
+                x: touches[0].clientX,
+                y: touches[0].clientY,
+                transform: d3.zoomTransform(svg.node())
+            };
+        }
+    });
+    
+    svg.on('touchmove', function(event) {
+        event.preventDefault();
+        const touches = event.touches;
+        
+        if (touches.length === 2 && touchStartDistance) {
+            // 双指缩放
+            const touch1 = touches[0];
+            const touch2 = touches[1];
+            const currentDistance = Math.sqrt(
+                Math.pow(touch2.clientX - touch1.clientX, 2) +
+                Math.pow(touch2.clientY - touch1.clientY, 2)
+            );
+            
+            const scale = currentDistance / touchStartDistance;
+            const newScale = Math.max(0.5, Math.min(10, touchStartTransform.k * scale));
+            
+            // 计算缩放中心点（相对于SVG）
+            const svgRect = svg.node().getBoundingClientRect();
+            const centerX = touchStartCenter[0] - svgRect.left;
+            const centerY = touchStartCenter[1] - svgRect.top;
+            
+            // 计算缩放后的平移，使中心点保持不变
+            const scaleRatio = newScale / touchStartTransform.k;
+            const newX = centerX - (centerX - touchStartTransform.x) * scaleRatio;
+            const newY = centerY - (centerY - touchStartTransform.y) * scaleRatio;
+            
+            // 应用缩放和平移
+            const newTransform = d3.zoomIdentity
+                .translate(newX, newY)
+                .scale(newScale);
+            
+            svg.call(zoom.transform, newTransform);
+            
+            // 更新起始变换和距离
+            touchStartTransform = newTransform;
+            touchStartDistance = currentDistance;
+            touchStartCenter = [
+                (touch1.clientX + touch2.clientX) / 2,
+                (touch1.clientY + touch2.clientY) / 2
+            ];
+        } else if (touches.length === 1 && isSingleTouch && singleTouchStart) {
+            // 单指平移
+            const dx = touches[0].clientX - singleTouchStart.x;
+            const dy = touches[0].clientY - singleTouchStart.y;
+            
+            const newTransform = singleTouchStart.transform.translate(dx, dy);
+            svg.call(zoom.transform, newTransform);
+            
+            // 更新起始位置
+            singleTouchStart.x = touches[0].clientX;
+            singleTouchStart.y = touches[0].clientY;
+            singleTouchStart.transform = newTransform;
+        }
+    });
+    
+    svg.on('touchend', function(event) {
+        if (event.touches.length === 0) {
+            touchStartDistance = null;
+            touchStartTransform = null;
+            touchStartCenter = null;
+            singleTouchStart = null;
+            isSingleTouch = false;
+        }
+    });
+}
+
+// 重置地图视角
+function resetMapView() {
+    if (!svg || !zoom) return;
+    
+    svg.call(zoom.transform, d3.zoomIdentity);
+    initialTransform = d3.zoomIdentity;
+}
+
 // 绘制县市地图
 function drawCounties(counties) {
-    const svg = d3.select('#historical-map');
+    if (!g) {
+        g = d3.select('#map-group');
+        if (g.empty()) {
+            g = d3.select('#historical-map').append('g').attr('id', 'map-group');
+        }
+    }
     
     // 清空旧地图
-    svg.selectAll('path.county').remove();
+    g.selectAll('path.county').remove();
     
     // 绘制县市
-    svg.selectAll('path.county')
+    g.selectAll('path.county')
         .data(counties.features)
         .enter()
         .append('path')
@@ -391,26 +582,86 @@ function updateUI(periodData) {
     updateHistoricalText(periodData);
 }
 
+// 筛选史料内容，提取与统治者治理和行政区划相关的关键信息
+function filterHistoricalText(fullText, period) {
+    if (!fullText) return '';
+    
+    // 关键词列表：统治者、治理、行政区划相关
+    const keywords = {
+        dutch_spanish: ['荷蘭', '西班牙', '統治', '管轄', '控制', '長官', '行政', '區劃', '熱蘭遮', '普羅文西', '大員', '東印度公司', '原住民', '番社', '戶口'],
+        ming: ['鄭成功', '鄭經', '鄭克塽', '明鄭', '政權', '建制', '承天府', '安平鎮', '天興州', '萬年州', '行政', '疆界', '屯墾', '設里', '軍隊'],
+        qing: ['清朝', '清政府', '清廷', '統治', '行政', '區劃', '府', '縣', '廳', '直隸州', '劉銘傳', '巡撫', '台灣省', '三府', '開山撫番', '番界', '土牛紅線'],
+        japanese: ['日本', '總督', '統治', '殖民', '行政', '區劃', '州', '廳', '五州三廳', '樺山資紀', '始政', '治理', '政策']
+    };
+    
+    const periodKeywords = keywords[period] || [];
+    if (periodKeywords.length === 0) return fullText; // 如果没有关键词，返回原文
+    
+    // 将HTML字符串转换为DOM元素以便处理
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = fullText;
+    const paragraphs = tempDiv.querySelectorAll('p');
+    
+    const filteredParagraphs = [];
+    paragraphs.forEach(p => {
+        const text = p.textContent || p.innerText;
+        // 检查段落是否包含关键词
+        const hasKeyword = periodKeywords.some(keyword => text.includes(keyword));
+        if (hasKeyword) {
+            filteredParagraphs.push(p.outerHTML);
+        }
+    });
+    
+    // 如果筛选后没有内容，返回原文的前3段
+    if (filteredParagraphs.length === 0) {
+        return Array.from(paragraphs).slice(0, 3).map(p => p.outerHTML).join('');
+    }
+    
+    return filteredParagraphs.join('');
+}
+
 // 更新史料内容
 function updateHistoricalText(periodData) {
     const textPanel = document.getElementById('historical-text-panel');
     const textContent = document.getElementById('historical-text-content');
+    const viewOriginalBtn = document.getElementById('view-original-text-btn');
     
     if (periodData && periodData.historicalText) {
         // 显示史料面板
         textPanel.style.display = 'block';
-        textContent.innerHTML = periodData.historicalText;
+        
+        // 优先使用专门的筛选后文本，如果没有则使用筛选函数
+        let filteredText;
+        if (periodData.filteredHistoricalText) {
+            filteredText = periodData.filteredHistoricalText;
+        } else {
+            filteredText = filterHistoricalText(periodData.historicalText, currentPeriod);
+        }
+        textContent.innerHTML = filteredText;
+        
+        // 保存完整原文以便在模态框中显示
+        textContent.dataset.fullText = periodData.historicalText;
+        
         // 确保史料内容展开
         textContent.classList.remove('collapsed');
+        
         // 重置按钮文字
         const btn = document.getElementById('toggle-historical-text-btn');
         if (btn) {
             btn.querySelector('span').style.display = 'inline';
             btn.querySelector('span:last-child').style.display = 'none';
         }
+        
+        // 显示"查看原文精选"按钮
+        if (viewOriginalBtn) {
+            viewOriginalBtn.style.display = 'inline-block';
+        }
     } else {
         // 隐藏史料面板
         textPanel.style.display = 'none';
+        if (viewOriginalBtn) {
+            viewOriginalBtn.style.display = 'none';
+        }
     }
 }
 
@@ -493,7 +744,7 @@ function updateLegend(periodData) {
         items.push({ color: dutchSpanishColorScheme.dutchIndirect, label: labels.dutchIndirect });
         items.push({ color: dutchSpanishColorScheme.spanishDirect, label: labels.spanishDirect });
         items.push({ color: dutchSpanishColorScheme.spanishIndirect, label: labels.spanishIndirect });
-        items.push({ color: colorScheme.uncontrolled, label: '未控制' });
+        items.push({ color: colorScheme.uncontrolled, label: '未控制区域' });
     } else {
         // 其他时期
         const mapping = periodData.controlMapping;
@@ -509,7 +760,7 @@ function updateLegend(periodData) {
             items.push({ color: colorScheme.influence, label: labels.influence });
         }
         
-        items.push({ color: colorScheme.uncontrolled, label: '未控制' });
+        items.push({ color: colorScheme.uncontrolled, label: '未控制区域' });
     }
     
     const itemNodes = legendItems.selectAll('.legend-item')
@@ -532,16 +783,6 @@ function updateLegend(periodData) {
             return d.label;
         });
     
-    // 为现代时期添加说明文字
-    if (currentPeriod === 'modern' && typeof modernMapConfig !== 'undefined') {
-        legendItems.append('div')
-            .style('margin-top', '10px')
-            .style('padding-top', '10px')
-            .style('border-top', '1px solid #e0e0e0')
-            .style('font-size', '12px')
-            .style('color', '#666')
-            .html('<strong>现代台湾行政区划</strong><br/>共22个县市（6直辖市 + 3市 + 13县）');
-    }
 }
 
 // 显示工具提示
@@ -606,6 +847,32 @@ function closeDetailedMap() {
     modal.classList.remove('show');
 }
 
+// 打开原文精选
+function openOriginalText() {
+    const textContent = document.getElementById('historical-text-content');
+    const fullText = textContent.dataset.fullText;
+    const periodData = historicalPeriods[currentPeriod];
+    
+    if (!fullText || !periodData) return;
+    
+    const modal = document.getElementById('original-text-modal');
+    const title = document.getElementById('original-text-title');
+    const source = document.getElementById('original-text-source');
+    const content = document.getElementById('original-text-content');
+    
+    title.textContent = periodData.name + ' - 原文精选';
+    source.innerHTML = '<div style="font-size: 14px; color: #9896f1; font-style: italic; margin-bottom: 15px;">《台灣歷史圖說 史前至一九四五年》</div>';
+    content.innerHTML = fullText;
+    
+    modal.classList.add('show');
+}
+
+// 关闭原文精选
+function closeOriginalText() {
+    const modal = document.getElementById('original-text-modal');
+    modal.classList.remove('show');
+}
+
 // 事件监听
 document.addEventListener('DOMContentLoaded', function() {
     // 初始化地图
@@ -641,21 +908,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // 缩放控制按钮
-    document.getElementById('zoom-in').addEventListener('click', function() {
-        // 将来可以实现缩放功能
-        console.log('放大地图');
-    });
-    
-    document.getElementById('zoom-out').addEventListener('click', function() {
-        // 将来可以实现缩放功能
-        console.log('缩小地图');
-    });
-    
-    document.getElementById('reset-zoom').addEventListener('click', function() {
-        // 将来可以实现重置功能
-        console.log('重置地图');
-    });
+    // 重置视角按钮
+    const resetBtn = document.getElementById('reset-zoom');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+            resetMapView();
+        });
+    }
     
     // 详细地图按钮（如果存在）
     const viewDetailedBtn = document.getElementById('view-detailed-map');
@@ -675,6 +934,28 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.addEventListener('click', function(e) {
             if (e.target === this) {
                 closeDetailedMap();
+            }
+        });
+    }
+    
+    // 原文精选按钮
+    const viewOriginalBtn = document.getElementById('view-original-text-btn');
+    if (viewOriginalBtn) {
+        viewOriginalBtn.addEventListener('click', openOriginalText);
+    }
+    
+    // 关闭原文精选按钮
+    const closeOriginalBtn = document.getElementById('close-original-text');
+    if (closeOriginalBtn) {
+        closeOriginalBtn.addEventListener('click', closeOriginalText);
+    }
+    
+    // 点击原文精选模态框背景关闭
+    const originalTextModal = document.getElementById('original-text-modal');
+    if (originalTextModal) {
+        originalTextModal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeOriginalText();
             }
         });
     }
