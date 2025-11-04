@@ -7,6 +7,11 @@ let qingMapSvg = null;
 // 加载并渲染清代地图（TopoJSON格式）
 function loadQingMap() {
     const svg = d3.select('#historical-map');
+    // 获取或创建地图组
+    let mapGroup = d3.select('#map-group');
+    if (mapGroup.empty()) {
+        mapGroup = svg.append('g').attr('id', 'map-group');
+    }
     
     // 显示加载指示器
     d3.select('#loading-indicator').style('display', 'flex');
@@ -14,8 +19,8 @@ function loadQingMap() {
     console.log('🗺️ 开始加载清代地图数据（TopoJSON格式）...');
     
     // 清空旧地图
-    svg.selectAll('path.qing-region').remove();
-    svg.selectAll('path.qing-base').remove();
+    mapGroup.selectAll('path.qing-region').remove();
+    mapGroup.selectAll('path.qing-base').remove();
     
     // 同时加载两个TopoJSON文件：台湾底图 + 清代行政区划
     Promise.all([
@@ -49,13 +54,13 @@ function loadQingMap() {
         console.log('  - 投影缩放:', projection.scale());
         console.log('  - SVG尺寸:', mapWidth, 'x', mapHeight);
         
-        // 第一层：渲染台湾完整轮廓（灰色底图，表示未设治区域）
-        console.log('  - 开始渲染台湾底图（中央山地）...');
-        renderQingBase(svg, countiesFeatures);
+        // 第一层：渲染台湾完整轮廓（灰色底图，表示未控制区域）
+        console.log('  - 开始渲染台湾底图（未控制区域）...');
+        renderQingBase(mapGroup, countiesFeatures);
         
         // 第二层：渲染清代行政区划（彩色）
         console.log('  - 开始渲染清代行政区划（', qingFeatures.length, '个区域）...');
-        renderQingRegions(svg, qingFeatures);
+        renderQingRegions(mapGroup, qingFeatures);
         
         // 隐藏加载指示器
         setTimeout(() => {
@@ -73,8 +78,8 @@ function loadQingMap() {
 }
 
 // 渲染台湾底图（中央山地）
-function renderQingBase(svg, features) {
-    svg.selectAll('path.qing-base')
+function renderQingBase(mapGroup, features) {
+    mapGroup.selectAll('path.qing-base')
         .data(features)
         .enter()
         .append('path')
@@ -89,16 +94,20 @@ function renderQingBase(svg, features) {
         .attr('stroke', '#000')
         .attr('stroke-width', 0.5)
         .style('cursor', 'pointer')
-        .on('mouseover', function(event) {
+        .on('mouseover', function(event, d) {
             d3.select(this)
                 .attr('fill-opacity', 0.9)
                 .attr('stroke-width', 1.5);
             
+            // 获取现代县市名称（与荷兰、明郑时期显示格式一致）
+            const countyId = d.properties.id;
+            const countyName = d.properties.name;
+            const modernName = (typeof countyCodes !== 'undefined' && countyCodes[countyId]) ? countyCodes[countyId] : countyName;
+            
             showTooltip(event, `
                 <div style="text-align: left;">
-                    <strong style="font-size: 16px;">中央山地</strong><br/>
-                    <span style="color: #666;">清朝未正式设治的山区</span><br/>
-                    <small style="color: #999;">包括中央山脉及东部部分地区</small>
+                    <strong style="font-size: 16px;">未控制区域</strong><br/>
+                    <span style="color: #ccc;">（今${modernName}）</span>
                 </div>
             `);
         })
@@ -109,12 +118,12 @@ function renderQingBase(svg, features) {
             hideTooltip();
         });
     
-    console.log('    ✓ 底图渲染完成（中央山地）');
+    console.log('    ✓ 底图渲染完成（未控制区域）');
 }
 
 // 渲染清代行政区划
-function renderQingRegions(svg, features) {
-    const paths = svg.selectAll('path.qing-region')
+function renderQingRegions(mapGroup, features) {
+    const paths = mapGroup.selectAll('path.qing-region')
         .data(features)
         .enter()
         .append('path')
@@ -157,11 +166,12 @@ function renderQingRegions(svg, features) {
                 `;
                 showTooltip(event, tooltipText);
             } else {
-                // 未映射区域显示为中央山地
+                // 未映射区域显示为未控制区域
+                // 注意：这里通常不会触发，因为未映射区域会通过底图显示
                 showTooltip(event, `
                     <div style="text-align: left;">
-                        <strong>${qingRegionData.unmappedName || '中央山地'}</strong><br/>
-                        <small style="color: #999;">清朝未正式设治的山区</small>
+                        <strong style="font-size: 16px;">未控制区域</strong><br/>
+                        <span style="color: #666;">清朝未正式设治的山区</span>
                     </div>
                 `);
             }
@@ -237,7 +247,7 @@ function updateQingLegend() {
         { name: "台湾府", color: qingRegionData.fuColors["台湾府"], counties: "台湾县、彰化县、埔里社厅、苗栗县、云林县（5个）" },
         { name: "台南府", color: qingRegionData.fuColors["台南府"], counties: "嘉义县、安平县、凤山县、恒春县、澎湖厅（5个）" },
         { name: "台东直隶州", color: qingRegionData.fuColors["直隶州"], counties: "直隶于台湾省（1个）" },
-        { name: "中央山地", color: qingRegionData.unmappedColor, counties: "未正式设治的山区" }
+        { name: "未控制区域", color: qingRegionData.unmappedColor, counties: "未正式设治的山区" }
     ];
     
     const itemNodes = legendItems.selectAll('.legend-item')
@@ -255,12 +265,4 @@ function updateQingLegend() {
         .attr('class', 'legend-label')
         .text(d => d.name);
     
-    // 添加说明文字
-    legendItems.append('div')
-        .style('margin-top', '10px')
-        .style('padding-top', '10px')
-        .style('border-top', '1px solid #e0e0e0')
-        .style('font-size', '12px')
-        .style('color', '#666')
-        .html('<strong>清光绪二十年（1894年）</strong><br/>三府一直隶州：共十一县三厅<br/><em style="font-size: 11px;">黑色细线边界，灰色为未设治区域</em>');
 }
