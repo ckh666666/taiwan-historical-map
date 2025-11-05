@@ -645,6 +645,11 @@ function updateHistoricalText(periodData) {
         // 确保史料内容展开
         textContent.classList.remove('collapsed');
         
+        // 重置滚动位置到顶部（使用 setTimeout 确保 DOM 更新完成）
+        setTimeout(() => {
+            textContent.scrollTop = 0;
+        }, 0);
+        
         // 重置按钮文字
         const btn = document.getElementById('toggle-historical-text-btn');
         if (btn) {
